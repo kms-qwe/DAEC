@@ -15,6 +15,6 @@ func main() {
 	log.Info(
 		"starting orchestrator", slog.Any("cfg", cfg),
 	)
-
-	application := orchApp.New(log, cfg.GRPC.Port, cfg.StoragePath, cfg.TokenTTL)
+	//нельзя запустить, пока нет слоя работы с бд
+	//application := orchApp.New(log, &orch.TaskPuller{})
 }
