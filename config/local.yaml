@@ -1,0 +1,9 @@
+env: "local"
+tokenTTL: 1h
+storage_path: ".storage/daec.db"
+grpc_server:
+  port: 8000
+  timeout: 10h
+http_server:
+  port: 8080
+  timeout: 10h

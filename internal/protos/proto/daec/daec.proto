@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package orch;
+
+option go_package = "kms-qwe.daec.v1;daecv1";
+
+service OrchService {
+    rpc Task (TaskRequest) returns (TaskResponse);
+    rpc Result (ResultRequest) returns (ResultResponse);
+}
+
+message TaskRequest {}
+
+message TaskResponse {
+    int64 id = 1;
+    double arg1 = 2;
+    double arg2 = 3;
+    string operation = 4;
+}
+
+message ResultRequest {
+    int64 id = 1;
+    double result = 2;
+}
+
+message ResultResponse {}
