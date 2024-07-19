@@ -5,8 +5,8 @@ package orch;
 option go_package = "kms-qwe.daec.v1;daecv1";
 
 service OrchService {
-    rpc Task (TaskRequest) returns (TaskResponse);
-    rpc Result (ResultRequest) returns (ResultResponse);
+    rpc GiveTask (TaskRequest) returns (TaskResponse);
+    rpc GetResult (ResultRequest) returns (ResultResponse);
 }
 
 message TaskRequest {}

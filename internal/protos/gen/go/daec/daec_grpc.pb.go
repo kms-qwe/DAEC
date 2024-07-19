@@ -22,8 +22,8 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type OrchServiceClient interface {
-	Task(ctx context.Context, in *TaskRequest, opts ...grpc.CallOption) (*TaskResponse, error)
-	Result(ctx context.Context, in *ResultRequest, opts ...grpc.CallOption) (*ResultResponse, error)
+	GiveTask(ctx context.Context, in *TaskRequest, opts ...grpc.CallOption) (*TaskResponse, error)
+	GetResult(ctx context.Context, in *ResultRequest, opts ...grpc.CallOption) (*ResultResponse, error)
 }
 
 type orchServiceClient struct {
@@ -34,18 +34,18 @@ func NewOrchServiceClient(cc grpc.ClientConnInterface) OrchServiceClient {
 	return &orchServiceClient{cc}
 }
 
-func (c *orchServiceClient) Task(ctx context.Context, in *TaskRequest, opts ...grpc.CallOption) (*TaskResponse, error) {
+func (c *orchServiceClient) GiveTask(ctx context.Context, in *TaskRequest, opts ...grpc.CallOption) (*TaskResponse, error) {
 	out := new(TaskResponse)
-	err := c.cc.Invoke(ctx, "/orch.OrchService/Task", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/orch.OrchService/GiveTask", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *orchServiceClient) Result(ctx context.Context, in *ResultRequest, opts ...grpc.CallOption) (*ResultResponse, error) {
+func (c *orchServiceClient) GetResult(ctx context.Context, in *ResultRequest, opts ...grpc.CallOption) (*ResultResponse, error) {
 	out := new(ResultResponse)
-	err := c.cc.Invoke(ctx, "/orch.OrchService/Result", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/orch.OrchService/GetResult", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +56,8 @@ func (c *orchServiceClient) Result(ctx context.Context, in *ResultRequest, opts 
 // All implementations must embed UnimplementedOrchServiceServer
 // for forward compatibility
 type OrchServiceServer interface {
-	Task(context.Context, *TaskRequest) (*TaskResponse, error)
-	Result(context.Context, *ResultRequest) (*ResultResponse, error)
+	GiveTask(context.Context, *TaskRequest) (*TaskResponse, error)
+	GetResult(context.Context, *ResultRequest) (*ResultResponse, error)
 	mustEmbedUnimplementedOrchServiceServer()
 }
 
@@ -65,11 +65,11 @@ type OrchServiceServer interface {
 type UnimplementedOrchServiceServer struct {
 }
 
-func (UnimplementedOrchServiceServer) Task(context.Context, *TaskRequest) (*TaskResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Task not implemented")
+func (UnimplementedOrchServiceServer) GiveTask(context.Context, *TaskRequest) (*TaskResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GiveTask not implemented")
 }
-func (UnimplementedOrchServiceServer) Result(context.Context, *ResultRequest) (*ResultResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Result not implemented")
+func (UnimplementedOrchServiceServer) GetResult(context.Context, *ResultRequest) (*ResultResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetResult not implemented")
 }
 func (UnimplementedOrchServiceServer) mustEmbedUnimplementedOrchServiceServer() {}
 
@@ -84,38 +84,38 @@ func RegisterOrchServiceServer(s grpc.ServiceRegistrar, srv OrchServiceServer) {
 	s.RegisterService(&OrchService_ServiceDesc, srv)
 }
 
-func _OrchService_Task_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OrchService_GiveTask_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OrchServiceServer).Task(ctx, in)
+		return srv.(OrchServiceServer).GiveTask(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/orch.OrchService/Task",
+		FullMethod: "/orch.OrchService/GiveTask",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrchServiceServer).Task(ctx, req.(*TaskRequest))
+		return srv.(OrchServiceServer).GiveTask(ctx, req.(*TaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _OrchService_Result_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _OrchService_GetResult_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ResultRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OrchServiceServer).Result(ctx, in)
+		return srv.(OrchServiceServer).GetResult(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/orch.OrchService/Result",
+		FullMethod: "/orch.OrchService/GetResult",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrchServiceServer).Result(ctx, req.(*ResultRequest))
+		return srv.(OrchServiceServer).GetResult(ctx, req.(*ResultRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -128,12 +128,12 @@ var OrchService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*OrchServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Task",
-			Handler:    _OrchService_Task_Handler,
+			MethodName: "GiveTask",
+			Handler:    _OrchService_GiveTask_Handler,
 		},
 		{
-			MethodName: "Result",
-			Handler:    _OrchService_Result_Handler,
+			MethodName: "GetResult",
+			Handler:    _OrchService_GetResult_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

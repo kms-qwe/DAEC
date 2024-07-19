@@ -7,3 +7,8 @@ grpc_server:
 http_server:
   port: 8080
   timeout: 10h
+time_addition_ms: 1000ms
+time_subtraction_ms: 1000ms
+time_multiplication_ms: 1000ms
+time_division_ms: 1000ms
+computing_power: 5
