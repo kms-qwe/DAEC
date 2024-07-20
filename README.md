@@ -73,7 +73,7 @@ curl --location 'localhost:8080/api/v1/expression?id=1' \
 ### 1 Клонирования репозитория
 
 ```commandline
-git clone https://github.com/kms-qwe/yandex-lyceum-go
+git clone https://github.com/kms-qwe/DAEC
 ```
 ### 2 Reset database
 ```commandline
