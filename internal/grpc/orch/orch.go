@@ -71,10 +71,11 @@ func (t *TaskPuller) Eval() {
 	var err error
 
 	for {
+		// time.Sleep(5 * time.Second)
 		t.ExprID, t.Expr, err = t.ExpStrg.GetExpr(ctx)
 		if err != nil {
 			log.Info("falied to get expr", sl.Err(err))
-			time.Sleep(1 * time.Second)
+			time.Sleep(10 * time.Second)
 			continue
 		}
 
@@ -85,11 +86,18 @@ func (t *TaskPuller) Eval() {
 		numOp := 0
 		res := map[int]float64{}
 
+		for i := range len(elementsOfExpr) - 2 {
+			if isNumber(elementsOfExpr[i]) && isNumber(elementsOfExpr[i+1]) && isOperator([]rune(elementsOfExpr[i+2])[0]) {
+				numOp += 1
+			}
+		}
+
 		go func() {
+			cnt := 0
 			for i := range len(elementsOfExpr) - 2 {
 				if isNumber(elementsOfExpr[i]) && isNumber(elementsOfExpr[i+1]) && isOperator([]rune(elementsOfExpr[i+2])[0]) {
-					numOp += 1
-					tsk := &daecv1.TaskResponse{Id: int64(numOp)}
+					cnt += 1
+					tsk := &daecv1.TaskResponse{Id: int64(cnt)}
 					tsk.Arg1, _ = strconv.ParseFloat(elementsOfExpr[i], 64)
 					tsk.Arg2, _ = strconv.ParseFloat(elementsOfExpr[i+1], 64)
 					tsk.Operation = elementsOfExpr[i+2]
@@ -99,6 +107,7 @@ func (t *TaskPuller) Eval() {
 			}
 		}()
 
+		log.Info("ожидается результат", slog.Int("len(res)", len(res)), slog.Int("numOp", numOp))
 		for len(res) != numOp {
 			r := <-t.ChFromAgent
 			log.Info(
@@ -109,6 +118,7 @@ func (t *TaskPuller) Eval() {
 				slog.Int64("номер результата", r.Id),
 				slog.Float64("Результат", r.Result),
 			)
+			res[int(r.GetId())] = r.GetResult()
 		}
 
 		cnt := 0
@@ -123,12 +133,11 @@ func (t *TaskPuller) Eval() {
 
 		expr := strings.Join(elementsOfExpr, " ")
 
-		log.Info("новое выражение", slog.String("NewExpr", expr))
-
 		err = t.ExpStrg.SaveExpr(ctx, t.ExprID, expr)
 		if err != nil {
 			log.Info("falied to save new expr", sl.Err(err))
 		}
+		log.Info("новое выражение сохранено", slog.String("NewExpr", expr))
 	}
 }
 

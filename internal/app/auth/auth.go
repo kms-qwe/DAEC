@@ -2,7 +2,9 @@ package auth
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -30,7 +32,7 @@ type UsrStorage interface {
 	IsUsrLoggin(context.Context, User) (bool, error)
 	GetPassword(context.Context, string) (string, int64, error)
 	GetAll(context.Context, int64) ([]Expr, error)
-	GetById(context.Context, int64) (Expr, error)
+	GetById(context.Context, int64, int64) (Expr, error)
 	SaveNewExpr(context.Context, int64, string, string) (int64, error)
 }
 type User struct {
@@ -111,7 +113,7 @@ func (s *Server) NewUsrRoot() http.HandlerFunc {
 
 		if User.Login == "" || User.Password == "" {
 			http.Error(w, "Ошибка при декодировании JSON", http.StatusInternalServerError)
-			log.Info("Ошибка регистрации: пустой логин или пароль", sl.Err(err))
+			log.Info("Ошибка регистрации: пустой логин или пароль")
 			return
 		}
 
@@ -123,7 +125,7 @@ func (s *Server) NewUsrRoot() http.HandlerFunc {
 		}
 		if isLoggin {
 			http.Error(w, "Пользователь существует", http.StatusInternalServerError)
-			log.Info("Ошибка регистрации: пользователь существует", sl.Err(err))
+			log.Info("Ошибка регистрации: пользователь существует")
 			return
 		}
 		if _, err := s.UsrStorage.SaveNewUsr(context.TODO(), User); err != nil {
@@ -164,7 +166,7 @@ func (s *Server) GiveTokenRoot() http.HandlerFunc {
 
 		if User.Login == "" || User.Password == "" {
 			http.Error(w, "Ошибка при декодировании JSON", http.StatusInternalServerError)
-			log.Info("Ошибка регистрации: пустой логин или пароль", sl.Err(err))
+			log.Info("Ошибка регистрации: пустой логин или пароль")
 			return
 		}
 
@@ -196,7 +198,7 @@ func (s *Server) GiveTokenRoot() http.HandlerFunc {
 		}
 
 		// Возвращаем JWT токен в теле ответа
-		w.WriteHeader(http.StatusOK)
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
 	}
@@ -264,7 +266,7 @@ func (s *Server) NewExprRoot() http.HandlerFunc {
 			log.Info("Не принято на вычисление: ошибка при записи id", sl.Err(err))
 		}
 		log.Info("Принято на вычисление")
-		w.WriteHeader(http.StatusOK)
+
 	}
 }
 
@@ -305,7 +307,6 @@ func (s *Server) AllExprRoot() http.HandlerFunc {
 			log.Info("Выражения не отданы: ошибка при записи id", sl.Err(err))
 		}
 		log.Info("Выражения отданы", slog.Any("exprs", exprs))
-		w.WriteHeader(http.StatusOK)
 
 	}
 }
@@ -320,7 +321,7 @@ func (s *Server) ExprByIdRoot() http.HandlerFunc {
 			return
 		}
 
-		isValid, _, err := s.validateJWTToken(r)
+		isValid, userID, err := s.validateJWTToken(r)
 		if err != nil || !isValid {
 			if err != nil {
 				http.Error(w, "Ошибка валидации токена", http.StatusInternalServerError)
@@ -340,8 +341,13 @@ func (s *Server) ExprByIdRoot() http.HandlerFunc {
 			return
 		}
 
-		expr, err := s.UsrStorage.GetById(context.TODO(), int64(id))
+		expr, err := s.UsrStorage.GetById(context.TODO(), int64(id), userID)
 
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, "нет записей", http.StatusInternalServerError)
+			log.Info("Выражения не отданы: нет записей", sl.Err(err))
+			return
+		}
 		if err != nil {
 			http.Error(w, "Ошибка при обращении к бд", http.StatusInternalServerError)
 			log.Info("Выражения не отданы: ошибка при обращении к бд", sl.Err(err))
@@ -355,7 +361,7 @@ func (s *Server) ExprByIdRoot() http.HandlerFunc {
 			log.Info("Выражения не отданы: ошибка при записи id", sl.Err(err))
 		}
 		log.Info("Выражения отданы", slog.Any("expr", expr))
-		w.WriteHeader(http.StatusOK)
+
 	}
 }
 
@@ -373,6 +379,7 @@ func (s *Server) validateJWTToken(r *http.Request) (bool, int64, error) {
 	const op = "auth.validateJWTToken"
 	log := s.log.With(slog.String("op", op))
 	tokenString := getTokenFromHeader(r)
+	log.Info("got token", slog.String("token", tokenString))
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -386,8 +393,7 @@ func (s *Server) validateJWTToken(r *http.Request) (bool, int64, error) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		fmt.Println("User name: ", claims["name"])
-		return true, claims["id"].(int64), nil
+		return true, int64(claims["id"].(float64)), nil
 	}
 
 	return false, 0, nil

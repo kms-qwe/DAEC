@@ -50,8 +50,8 @@ func (s *OrchStorage) SaveExpr(ctx context.Context, exprID int64, expr string) e
 	}
 	var q string
 
-	if !isNumber(expr) {
-		q = `UPDATE expressions SET expr = ?, status = "done", result = ? WHERE expr_id = ?`
+	if isNumber(expr) {
+		q = `UPDATE expressions SET polish_expr = ?, status = "done", result = ? WHERE expr_id = ?`
 
 		res, _ := strconv.ParseFloat(expr, 64)
 
@@ -64,7 +64,7 @@ func (s *OrchStorage) SaveExpr(ctx context.Context, exprID int64, expr string) e
 		return nil
 	}
 
-	q = `UPDATE expressions SET expr = ? WHERE expr_id = ?`
+	q = `UPDATE expressions SET polish_expr = ? WHERE expr_id = ?`
 
 	_, err := s.db.ExecContext(ctx, q, expr, exprID)
 
@@ -138,12 +138,12 @@ func (s *AuthStorage) GetPassword(ctx context.Context, login string) (string, in
 	return pass, userID, nil
 }
 
-func (s *AuthStorage) GetById(ctx context.Context, exprID int64) (auth.Expr, error) {
-	q := `SELECT expr_id, expr, status, result FROM expressions WHERE expr_id = ?`
+func (s *AuthStorage) GetById(ctx context.Context, exprID int64, userID int64) (auth.Expr, error) {
+	q := `SELECT expr_id, expr, status, result FROM expressions WHERE expr_id = ? AND user_id = ?`
 
 	var ans auth.Expr
 
-	err := s.db.QueryRowContext(ctx, q, exprID).Scan(&ans.Id, &ans.Exp, &ans.Status, &ans.Result)
+	err := s.db.QueryRowContext(ctx, q, exprID, userID).Scan(&ans.Id, &ans.Exp, &ans.Status, &ans.Result)
 	if err == sql.ErrNoRows {
 		return auth.Expr{}, fmt.Errorf("no such expr in db: %w", err)
 	}
@@ -154,7 +154,7 @@ func (s *AuthStorage) GetById(ctx context.Context, exprID int64) (auth.Expr, err
 	return ans, nil
 }
 func (s *AuthStorage) SaveNewExpr(ctx context.Context, userID int64, expr string, polishExpr string) (int64, error) {
-	q := `INSERT INTO expressions (expr, polish_expr, user_id) VALUE (?, ?, ?)`
+	q := `INSERT INTO expressions (expr, polish_expr, user_id) VALUES (?, ?, ?)`
 
 	result, err := s.db.ExecContext(ctx, q, expr, polishExpr, userID)
 	if err != nil {
@@ -217,7 +217,7 @@ func (s *InitStorage) Init(ctx context.Context) error {
     expr TEXT,
     polish_expr TEXT,
     status TEXT DEFAULT 'computing',
-    result DOUBLE,
+    result DOUBLE DEFAULT 0.0,
     user_id INTEGER,
     FOREIGN KEY (user_id) REFERENCES users (user_id)
 	);`
