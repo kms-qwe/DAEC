@@ -4,7 +4,9 @@ go 1.22.0
 
 require (
 	github.com/fatih/color v1.17.0
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/ilyakaznacheev/cleanenv v1.5.0
+	github.com/mattn/go-sqlite3 v1.14.22
 	golang.org/x/exp v0.0.0-20240716175740-e3f259677ff7
 	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.2

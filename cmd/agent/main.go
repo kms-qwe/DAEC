@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/kms-qwe/DAEC/internal/config"
@@ -22,9 +23,13 @@ func main() {
 		"starting agent", slog.Any("cfg", cfg),
 	)
 
+	var wg sync.WaitGroup
+	wg.Add(cfg.ComputingPower)
 	for range cfg.ComputingPower {
 		go worker(log, cfg)
 	}
+
+	wg.Wait()
 
 }
 
@@ -33,8 +38,7 @@ func worker(Oldlog *slog.Logger, cfg *config.Config) {
 	log := Oldlog.With(
 		slog.String("op", op),
 	)
-
-	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial("localhost:8000", grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		log.Warn("did not connect", sl.Err(err))
 	}
@@ -45,9 +49,7 @@ func worker(Oldlog *slog.Logger, cfg *config.Config) {
 	// Создаем таймер для отправки запроса каждую секунду
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
-
 	for range ticker.C {
-
 		// Отправка запроса на получение задачи
 		ctx := context.Background()
 

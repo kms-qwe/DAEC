@@ -23,6 +23,8 @@ func New(
 	gRPCServer := grpc.NewServer()
 	orch.Register(gRPCServer, taskPuller)
 
+	go taskPuller.FakeEval() //УБРАТЬ!!!!!!
+
 	return &App{
 		log:        log,
 		gRPCServer: gRPCServer,

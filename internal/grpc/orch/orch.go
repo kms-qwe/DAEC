@@ -18,11 +18,11 @@ type ServerApi struct {
 }
 
 type TaskPuller struct {
-	log         *slog.Logger
-	chToAgent   chan *daecv1.TaskResponse
-	chFromAgent chan *daecv1.ResultRequest
-	exprID      int64
-	expr        string
+	Log         *slog.Logger
+	ChToAgent   chan *daecv1.TaskResponse
+	ChFromAgent chan *daecv1.ResultRequest
+	ExprID      int64
+	Expr        string
 	ExpStrg     ExpStorage
 }
 
@@ -36,17 +36,33 @@ func Register(gRPC *grpc.Server, TaskPull *TaskPuller) {
 }
 
 func (s *ServerApi) GiveTask(ctx context.Context, req *daecv1.TaskRequest) (*daecv1.TaskResponse, error) {
-	return <-s.TaskPull.chToAgent, nil
+	return <-s.TaskPull.ChToAgent, nil
 }
 
 func (s *ServerApi) GetResult(ctx context.Context, req *daecv1.ResultRequest) (*daecv1.ResultResponse, error) {
-	s.TaskPull.chFromAgent <- req
+	s.TaskPull.ChFromAgent <- req
 	return &daecv1.ResultResponse{}, nil
 }
-
+func (t *TaskPuller) FakeEval() {
+	const op = "orch.FakeEval"
+	log := t.Log.With(
+		slog.String("op", op),
+	)
+	log.Info("Eval starts")
+	go func() {
+		for {
+			t.ChToAgent <- &daecv1.TaskResponse{}
+			log.Info("Задача отослана")
+			time.Sleep(1 * time.Second)
+		}
+	}()
+	for m := range t.ChFromAgent {
+		log.Info("get m", slog.Any("m", m))
+	}
+}
 func (t *TaskPuller) Eval() {
 	const op = "orch.Eval"
-	log := t.log.With(
+	log := t.Log.With(
 		slog.String("op", op),
 	)
 	log.Info("Eval starts")
@@ -55,17 +71,17 @@ func (t *TaskPuller) Eval() {
 	var err error
 
 	for {
-		t.exprID, t.expr, err = t.ExpStrg.GetExpr(ctx)
+		t.ExprID, t.Expr, err = t.ExpStrg.GetExpr(ctx)
 		if err != nil {
 			log.Info("falied to get expr", sl.Err(err))
 			time.Sleep(1 * time.Second)
 			continue
 		}
 
-		log.Info("get expr", slog.String("expr", t.expr))
+		log.Info("get expr", slog.String("expr", t.Expr))
 
 		//Считаем части, которые можно выполнить параллельно
-		elementsOfExpr := strings.Fields(t.expr)
+		elementsOfExpr := strings.Fields(t.Expr)
 		numOp := 0
 		res := map[int]float64{}
 
@@ -78,13 +94,13 @@ func (t *TaskPuller) Eval() {
 					tsk.Arg2, _ = strconv.ParseFloat(elementsOfExpr[i+1], 64)
 					tsk.Operation = elementsOfExpr[i+2]
 					log.Info("отправлено в chToAgent", slog.Any("task", tsk))
-					t.chToAgent <- tsk
+					t.ChToAgent <- tsk
 				}
 			}
 		}()
 
 		for len(res) != numOp {
-			r := <-t.chFromAgent
+			r := <-t.ChFromAgent
 			log.Info(
 				"Получен новый результат",
 				slog.Int("len(res)",
@@ -109,7 +125,7 @@ func (t *TaskPuller) Eval() {
 
 		log.Info("новое выражение", slog.String("NewExpr", expr))
 
-		err = t.ExpStrg.SaveExpr(ctx, t.exprID, expr)
+		err = t.ExpStrg.SaveExpr(ctx, t.ExprID, expr)
 		if err != nil {
 			log.Info("falied to save new expr", sl.Err(err))
 		}
